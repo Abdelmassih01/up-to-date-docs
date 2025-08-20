@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "FastAPI Debug",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--host", "0.0.0.0",
+                "--port", "8000",
+                "--reload"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "c:\\Users\\abdelmassih\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\crawler-fq5T3g7D-py3.12\\Scripts\\python.exe",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "CHROMA_HOST": "localhost",
+                "CHROMA_PORT": "8001",
+                "CHROMA_COLLECTION": "crawled_docs_pages",
+                "EMBED_MODEL": "sentence-transformers/all-MiniLM-L6-v2",
+                "EMBED_DIM": "384"
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "FastAPI Debug (Poetry Run)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "c:\\Users\\abdelmassih\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\crawler-fq5T3g7D-py3.12\\Scripts\\poetry.exe",
+            "args": [
+                "run",
+                "uvicorn",
+                "app.main:app",
+                "--host", "0.0.0.0",
+                "--port", "8000",
+                "--reload"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false
+        }
+    ]
+}

@@ -1,0 +1,11 @@
+services:
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - "C:/Users/abdelmassih/Desktop/Abdelmassih/Addchat/docsProject/chroma_data:/data"
+    environment:
+      - ANONYMIZED_TELEMETRY=False
+    restart: unless-stopped
