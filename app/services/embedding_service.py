@@ -19,12 +19,13 @@ def embed_text(text: str):
     _, _, embedder = init_vector()
     return embedder.encode([text], normalize_embeddings=True)[0].tolist()
 
-def chroma_upsert(doc_id: str, text: str, meta: Dict):
+def chroma_upsert(doc_id: str, vector: list[float], text: str, meta: Dict):
     _, collection, _ = init_vector()
     collection.upsert(
         ids=[doc_id],
+        embeddings=[vector],
         documents=[text],
-        metadatas=[meta]
+        metadatas=[meta],
     )
 
 def chroma_delete(doc_id: str):

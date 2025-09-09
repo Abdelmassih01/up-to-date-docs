@@ -5,7 +5,7 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - "C:/Users/abdelmassih/Desktop/Abdelmassih/Addchat/docsProject/chroma_data:/data"
+      - "C:/Users/abdelmassih/Desktop/Abdelmassih/Addchat/docsProject/chroma_database:/data"
     environment:
       - ANONYMIZED_TELEMETRY=False
     restart: unless-stopped

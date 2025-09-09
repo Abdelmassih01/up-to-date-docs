@@ -1,0 +1,40 @@
+  GNU nano 7.2                         docker-compose.yml                                  services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crawler-app
+    environment:
+      - CHROMA_HOST=chroma        # use service name to resolve in Docker network
+      - CHROMA_PORT=8000
+      - CHROMA_COLLECTION=crawled_docs_pages
+      - EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - EMBED_DIM=384
+      - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+    depends_on:
+      - chroma
+    volumes:
+      - /home/abdelmassih/srv/crawler/data/hf-cache:/root/.cache/huggingface
+      - /home/abdelmassih/srv/crawler/data/torch-cache:/root/.cache/torch
+      # optional if your app writes files:
+      - /home/abdelmassih/srv/crawler/data/app:/app/data
+    ports:
+      - "127.0.0.1:8080:8000"   # only listen on loopback; Nginx will proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=False
+    volumes:
+      - /home/abdelmassih/srv/crawler/data/chroma:/data
+    ports:
+      - "127.0.0.1:8001:8000"   # private
+    restart: unless-stopped

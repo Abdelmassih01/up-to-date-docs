@@ -16,6 +16,8 @@ import asyncio
 from app.services.embedding_service import build_page_text, embed_text, chroma_upsert, chroma_delete
 from app.core.vector import EMBED_MODEL
 from app.models.page import PageDocument
+import httpx
+
 
 
 # ---------- Config ----------
@@ -29,6 +31,19 @@ HEADERS = {
 }
 
 # ---------- Helpers ----------
+async def fetch_async(url: str) -> Optional[str]:
+    try:
+        async with httpx.AsyncClient(timeout=REQ_TIMEOUT, headers=HEADERS) as client:
+            res = await client.get(url, follow_redirects=True)
+            if res.history:  # means we got redirected
+                print(f"[REDIRECT] {url} -> {res.url}")
+            if res.status_code == 200:
+                return res.text
+            print(f"[ERROR] {url} -> HTTP {res.status_code}")
+    except Exception as e:
+        print(f"[ERROR] {url} -> {e}")
+    return None
+
 def normalize_url(url: str) -> str:
     clean, _ = urldefrag(url.strip())
     return clean
@@ -260,129 +275,129 @@ def should_skip_url(url: str) -> bool:
                 return True
     return False
 
-async def upsert_page(doc: PageDocument):
-    # upsert by URL
-    existing = await PageDocument.find_one(PageDocument.url == doc.url)
-    if existing:
-        # optional: skip if hash unchanged
-        if existing.hash == doc.hash:
-            print(f"[SKIP] {doc.url} (unchanged)")
-            return existing.id
-        existing.title = doc.title
-        existing.headings = doc.headings
-        existing.sections = doc.sections
-        existing.last_crawled = doc.last_crawled
-        existing.code_blocks_flat = doc.code_blocks_flat
-        existing.summary = doc.summary
-        existing.metadata = doc.metadata
-        existing.hash = doc.hash
-        await existing.save()
-        print(f"[UPDATE] {doc.url}")
-        return existing.id
-    else:
-        saved = await doc.insert()
-        print(f"[INSERT] {doc.url}")
-        return saved.id
-
 async def crawl_site(base_url: str):
     """
-    Minimal change from your script:
-    - Still uses requests/BeautifulSoup (sync) for fetching/parsing
-    - BUT saves directly to Mongo via Beanie (async) using upsert_page()
+    Crawl site with async fetch + sequential processing.
+    Logs fetch/process/total times per page and total crawl time.
     """
     base_url = normalize_url(base_url)
 
     visited = set()
-    crawled = set()  # if you later want to persist a set, move it to Mongo
+    crawled = set()
     q = deque([base_url])
+    
+    SEM = asyncio.Semaphore(10)   # limit concurrency to 10
+    BATCH_SIZE = 20
 
+    async def bounded_fetch(url: str) -> tuple[str, Optional[str], float]:
+        async with SEM:
+            start = time.perf_counter()
+            html = await fetch_async(url)   # use httpx async client
+            elapsed = time.perf_counter() - start
+            return url, html, elapsed
+
+    # --- overall timer ---
+    crawl_start = time.perf_counter()
+
+    # --- crawl loop ---
     while q:
-        url = normalize_url(q.popleft())
+        # 1. Take up to BATCH_SIZE URLs from the queue
+        batch = []
+        while q and len(batch) < BATCH_SIZE:
+            url = normalize_url(q.popleft())
+            if url in visited or url in crawled:
+                continue
+            if not same_scope(url, base_url):
+                continue
+            batch.append(url)
 
-        if url in visited or url in crawled:
+        if not batch:
             continue
-        if not same_scope(url, base_url):
-            continue
 
-        html = fetch(url)
-        if not html:
-            continue
+        # 2. Fetch all of them in parallel
+        tasks = [bounded_fetch(u) for u in batch]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # extract page and SAVE TO MONGO
-        doc = extract_page(url, html)
-        
-        # 1) Save/update Mongo (returns id + whether it existed)
-        mongo_id, pre_existed = await upsert_page(doc)
+        # 3. Process results sequentially (parsing + embedding)
+        for result in results:
+            if isinstance(result, Exception):
+                print(f"[FETCH ERROR] {result}")
+                continue
 
-        # If the page is unchanged (we SKIP), we won't re-embed here.
-        # But you can mark it "ok" to reflect previously embedded status.
-        page = await PageDocument.get(mongo_id)
-        if page and page.hash and pre_existed:
-            # If you prefer to skip re-embedding unchanged:
-            # (comment out the next block to always re-embed)
-            print(f"[EMBED] skip unchanged {url}")
-        else:
-            # 2) Build embedding text (sections + code)
-            text = build_page_text(doc.sections)
+            url, html, fetch_time = result
+            if not html:
+                continue
 
+            process_start = time.perf_counter()
+
+            # extract page and SAVE TO MONGO
+            doc = extract_page(url, html)
+            mongo_id, pre_existed = await upsert_page(doc)
+
+            page = await PageDocument.get(mongo_id)
+            if page and page.hash and pre_existed:
+                print(f"[EMBED] skip unchanged {url}")
+            else:
+                text = build_page_text(doc.sections)
+                try:
+                    vector = await asyncio.to_thread(embed_text, text)
+                    meta = {
+                        "url": doc.url,
+                        "title": doc.title,
+                        "hash": doc.hash,
+                        "site": doc.metadata.get("site") if doc.metadata else None,
+                        "last_crawled": doc.last_crawled.isoformat()
+                    }
+                    await asyncio.to_thread(chroma_upsert, mongo_id, vector, text, meta)
+
+                    saved = await PageDocument.get(mongo_id)
+                    if saved:
+                        saved.embedding_status = "ok"
+                        saved.last_embedded_at = datetime.utcnow()
+                        saved.embedding_model = EMBED_MODEL
+                        saved.vector_store_id = mongo_id
+                        await saved.save()
+                    print(f"[EMBED] ok {url}")
+                except Exception as e:
+                    print(f"[EMBED][ERROR] {url} -> {e}")
+                    if not pre_existed:
+                        doomed = await PageDocument.get(mongo_id)
+                        if doomed:
+                            await doomed.delete()
+                            print(f"[ROLLBACK] deleted Mongo for {url}")
+                    else:
+                        existing = await PageDocument.get(mongo_id)
+                        if existing:
+                            existing.embedding_status = "failed"
+                            existing.last_embedded_at = datetime.utcnow()
+                            await existing.save()
+
+            visited.add(url)
+            crawled.add(url)
+
+            # enqueue new links
             try:
-                # 3) Compute embedding off the event loop
-                vector = await asyncio.to_thread(embed_text, text)
-
-                # 4) Upsert to Chroma
-                meta = {
-                    "url": doc.url,
-                    "title": doc.title,
-                    "hash": doc.hash,
-                    "site": doc.metadata.get("site") if doc.metadata else None,
-                    "last_crawled": doc.last_crawled.isoformat()
-                }
-                await asyncio.to_thread(chroma_upsert, mongo_id, text, meta)
-
-                # 5) Mark page as embedded
-                saved = await PageDocument.get(mongo_id)
-                if saved:
-                    saved.embedding_status = "ok"
-                    saved.last_embedded_at = datetime.utcnow()
-                    saved.embedding_model = EMBED_MODEL
-                    saved.vector_store_id = mongo_id
-                    await saved.save()
-                print(f"[EMBED] ok {url}")
-
+                soup = BeautifulSoup(html, "lxml")
+                for a in soup.find_all("a", href=True):
+                    nxt = normalize_url(urljoin(url, a["href"]))
+                    if not nxt.lower().startswith(("http://", "https://")):
+                        continue
+                    if (same_scope(nxt, base_url)
+                        and nxt not in visited
+                        and nxt not in crawled
+                        and not should_skip_url(nxt)):
+                        q.append(nxt)
             except Exception as e:
-                print(f"[EMBED][ERROR] {url} -> {e}")
+                print(f"[WARN] link parse failed on {url}: {e}")
 
-                # Rollback: if brand-new Mongo doc and Chroma failed, delete the Mongo doc
-                if not pre_existed:
-                    doomed = await PageDocument.get(mongo_id)
-                    if doomed:
-                        await doomed.delete()
-                        print(f"[ROLLBACK] deleted Mongo for {url} (brand-new insert)")
-                else:
-                    # Existing doc — keep it, mark failed so a later retry can fix
-                    existing = await PageDocument.get(mongo_id)
-                    if existing:
-                        existing.embedding_status = "failed"
-                        existing.last_embedded_at = datetime.utcnow()
-                        await existing.save()
+            # --- log timing ---
+            process_time = time.perf_counter() - process_start
+            total_time = fetch_time + process_time
+            print(f"[TIMING] {url} -> fetch {fetch_time:.2f}s | process {process_time:.2f}s | total {total_time:.2f}s")
 
-        visited.add(url)
-        crawled.add(url)
-
-        # enqueue new links
-        try:
-            soup = BeautifulSoup(html, "lxml")
-            for a in soup.find_all("a", href=True):
-                nxt = normalize_url(urljoin(url, a["href"]))
-                if not nxt.lower().startswith(("http://", "https://")):
-                    continue
-                if (same_scope(nxt, base_url)
-                    and nxt not in visited
-                    and nxt not in crawled
-                    and not should_skip_url(nxt)):
-                    q.append(nxt)
-        except Exception as e:
-            print(f"[WARN] link parse failed on {url}: {e}")
+    # --- total crawl summary ---
+    crawl_elapsed = time.perf_counter() - crawl_start
+    print(f"[CRAWL DONE] {base_url} in {crawl_elapsed:.2f}s | {len(crawled)} pages")
             
 async def upsert_page(doc: PageDocument) -> tuple[str, bool]:
     existing = await PageDocument.find_one(PageDocument.url == doc.url)
