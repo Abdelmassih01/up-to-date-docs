@@ -83,15 +83,17 @@ async def get_page_document_by_id(doc_id: str) -> Optional[PageDocument]:
     
 async def get_page_documents_by_ids(doc_ids: List[str]) -> List[PageDocument]:
     """Fetch multiple PageDocuments by IDs in a single query."""
-    try:
-        object_ids = [ObjectId(doc_id) for doc_id in doc_ids]
-    except Exception:
-        # If some IDs are invalid, skip them
-        object_ids = []
+    object_ids = []
+    for doc_id in doc_ids:
+        try:
+            object_ids.append(ObjectId(doc_id))
+        except Exception:
+            continue
     if not object_ids:
         return []
 
-    return await PageDocument.find(PageDocument.id.in_(object_ids)).to_list()
+    # ✅ Correct Beanie query
+    return await PageDocument.find({"_id": {"$in": object_ids}}).to_list()
 
 def render_single_page_html(doc: PageDocument) -> str:
     """Render a single PageDocument to HTML"""
