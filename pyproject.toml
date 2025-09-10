@@ -50,4 +50,4 @@ mypy = "^1.17.1"
 [[tool.poetry.source]]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
-default = false
+priority = "explicit"
