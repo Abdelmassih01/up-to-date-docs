@@ -3,10 +3,11 @@ name = "crawler"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "abdelmassih",email = "a.abdelmassih@addchatapp.com"}
+    { name = "abdelmassih", email = "a.abdelmassih@addchatapp.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
+
 dependencies = [
     "aiohttp (>=3.12.15,<4.0.0)",
     "aiofiles (>=24.1.0,<25.0.0)",
@@ -19,6 +20,12 @@ dependencies = [
     "motor (>=3.7.1,<4.0.0)",
     "pymongo (>=4.14.0,<5.0.0)",
     "pydantic (>=2.11.7,<3.0.0)",
+
+    # ✅ Force CPU-only builds
+    "torch==2.2.0+cpu",
+    "torchvision==0.17.0+cpu",
+    "torchaudio==2.2.0+cpu",
+
     "sentence-transformers (>=5.1.0,<6.0.0)",
     "chromadb (>=1.0.17,<2.0.0)",
     "qdrant-client (>=1.15.1,<2.0.0)",
@@ -30,7 +37,6 @@ dependencies = [
     "matplotlib (>=3.10.6,<4.0.0)"
 ]
 
-
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -40,3 +46,8 @@ black = "^25.1.0"
 isort = "^6.0.1"
 mypy = "^1.17.1"
 
+# 👇 Tell Poetry about the CPU wheels repo
+[[tool.poetry.source]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+default = false
