@@ -27,7 +27,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 - \
 COPY pyproject.toml poetry.lock* /app/
 
 # 👇 Install with CPU-only torch source
-RUN poetry install --no-root --no-dev --source torch-cpu \
+RUN poetry install --no-root --without dev --source torch-cpu \
  && rm -rf ~/.cache/pypoetry ~/.cache/pip
 
 # --------------------
