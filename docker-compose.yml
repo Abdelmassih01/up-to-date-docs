@@ -14,10 +14,11 @@ services:
       - TRANSFORMERS_CACHE=/root/.cache/huggingface
       - CHROMA_MODE=persistent
       - CHROMA_PATH=/app/data/chroma
-      - MONGODB_URI=mongodb+srv://abdelmassihabedalmassih:Dia2004&@repcounter.jueeczi.mongodb.net/
+      - MONGODB_URI=mongodb://abdelmassih:dayu2a24@mongo:27017/?authSource=admin
       - MONGODB_DB=docsdb
     depends_on:
       - chroma
+      - mongo
     volumes:
       - /home/abdelmassih/srv/crawler/data/hf-cache:/root/.cache/huggingface
       - /home/abdelmassih/srv/crawler/data/torch-cache:/root/.cache/torch
@@ -38,4 +39,17 @@ services:
       - ANONYMIZED_TELEMETRY=False
     ports:
       - "127.0.0.1:8001:8000"   # private
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7.0
+    container_name: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=abdelmassih
+      - MONGO_INITDB_ROOT_PASSWORD=dayu2a24
+      - MONGO_INITDB_DATABASE=docsdb
+    volumes:
+      - /home/abdelmassih/srv/crawler/data/mongo:/data/db
+    ports:
+      - "27017:27017"
     restart: unless-stopped
