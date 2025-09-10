@@ -12,13 +12,14 @@
       - EMBED_DIM=384
       - HF_HOME=/root/.cache/huggingface
       - TRANSFORMERS_CACHE=/root/.cache/huggingface
+      - CHROMA_MODE=persistent
+      - CHROMA_PATH=/app/data/chroma
     depends_on:
       - chroma
     volumes:
       - /home/abdelmassih/srv/crawler/data/hf-cache:/root/.cache/huggingface
       - /home/abdelmassih/srv/crawler/data/torch-cache:/root/.cache/torch
-      # optional if your app writes files:
-      - /home/abdelmassih/srv/crawler/data/app:/app/data
+      - /home/abdelmassih/srv/crawler/data/chroma:/app/data/chroma
     ports:
       - "127.0.0.1:8080:8000"   # only listen on loopback; Nginx will proxy
     restart: unless-stopped
@@ -33,8 +34,6 @@
     container_name: chroma
     environment:
       - ANONYMIZED_TELEMETRY=False
-    volumes:
-      - /home/abdelmassih/srv/crawler/data/chroma:/data
     ports:
       - "127.0.0.1:8001:8000"   # private
     restart: unless-stopped
