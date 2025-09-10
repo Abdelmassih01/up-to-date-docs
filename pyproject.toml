@@ -1,52 +1,49 @@
-[project]
+[tool.poetry]
 name = "crawler"
 version = "0.1.0"
 description = ""
-authors = [
-    { name = "abdelmassih", email = "a.abdelmassih@addchatapp.com" }
-]
+authors = ["abdelmassih <a.abdelmassih@addchatapp.com>"]
 readme = "README.md"
-requires-python = ">=3.12,<4.0"
 
-dependencies = [
-    "aiohttp (>=3.12.15,<4.0.0)",
-    "aiofiles (>=24.1.0,<25.0.0)",
-    "beautifulsoup4 (>=4.13.4,<5.0.0)",
-    "lxml (>=6.0.0,<7.0.0)",
-    "tqdm (>=4.67.1,<5.0.0)",
-    "requests (>=2.32.4,<3.0.0)",
-    "fastapi (>=0.116.1,<0.117.0)",
-    "uvicorn[standard] (>=0.35.0,<0.36.0)",
-    "motor (>=3.7.1,<4.0.0)",
-    "pymongo (>=4.14.0,<5.0.0)",
-    "pydantic (>=2.11.7,<3.0.0)",
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0"
+aiohttp = ">=3.12.15,<4.0.0"
+aiofiles = ">=24.1.0,<25.0.0"
+beautifulsoup4 = ">=4.13.4,<5.0.0"
+lxml = ">=6.0.0,<7.0.0"
+tqdm = ">=4.67.1,<5.0.0"
+requests = ">=2.32.4,<3.0.0"
+fastapi = ">=0.116.1,<0.117.0"
+uvicorn = { version = ">=0.35.0,<0.36.0", extras = ["standard"] }
+motor = ">=3.7.1,<4.0.0"
+pymongo = ">=4.14.0,<5.0.0"
+pydantic = ">=2.11.7,<3.0.0"
 
-    # ✅ Force CPU-only Torch builds
-    "torch==2.2.0+cpu",
-    "torchvision==0.17.0+cpu",
-    "torchaudio==2.2.0+cpu",
+# ✅ CPU-only torch from custom source
+torch = { version = "2.2.0", source = "torch-cpu" }
+torchvision = { version = "0.17.0", source = "torch-cpu" }
+torchaudio = { version = "2.2.0", source = "torch-cpu" }
 
-    "sentence-transformers (>=5.1.0,<6.0.0)",
-    "chromadb (>=1.0.17,<2.0.0)",
-    "qdrant-client (>=1.15.1,<2.0.0)",
-    "beanie (>=2.0.0,<3.0.0)",
-    "bs4 (>=0.0.2,<0.0.3)",
-    "python-dotenv (>=1.1.1,<2.0.0)",
-    "streamlit (>=1.49.1,<2.0.0)",
-    "scikit-learn (>=1.7.2,<2.0.0)",
-    "matplotlib (>=3.10.6,<4.0.0)"
-]
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+sentence-transformers = ">=5.1.0,<6.0.0"
+chromadb = ">=1.0.17,<2.0.0"
+qdrant-client = ">=1.15.1,<2.0.0"
+beanie = ">=2.0.0,<3.0.0"
+bs4 = ">=0.0.2,<0.0.3"
+python-dotenv = ">=1.1.1,<2.0.0"
+streamlit = ">=1.49.1,<2.0.0"
+scikit-learn = ">=1.7.2,<2.0.0"
+matplotlib = ">=3.10.6,<4.0.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
 isort = "^6.0.1"
 mypy = "^1.17.1"
 
-# ✅ Add torch-cpu source for Poetry
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# ✅ Custom source for CPU-only torch
 [[tool.poetry.source]]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
