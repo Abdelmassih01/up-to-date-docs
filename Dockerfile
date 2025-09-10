@@ -26,16 +26,18 @@ RUN curl -sSL https://install.python-poetry.org | python3 - \
 # Copy dependency files first for caching
 COPY pyproject.toml poetry.lock* /app/
 
-# 👇 Install with CPU-only torch source
-RUN poetry install --no-root --without dev --source torch-cpu \
+# ✅ Install with CPU-only Torch (source defined in pyproject.toml)
+RUN poetry install --no-root --without dev \
  && rm -rf ~/.cache/pypoetry ~/.cache/pip
+
+# 🔎 Verify Torch build (CPU only, no CUDA)
+RUN python -c "import torch; print('Torch version:', torch.__version__, '| CUDA available:', torch.cuda.is_available())"
 
 # --------------------
 # Runtime stage
 # --------------------
 FROM base AS runtime
 
-# Install only what's needed at runtime (no compilers)
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
  && rm -rf /var/lib/apt/lists/*
 

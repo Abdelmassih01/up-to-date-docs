@@ -21,7 +21,7 @@ dependencies = [
     "pymongo (>=4.14.0,<5.0.0)",
     "pydantic (>=2.11.7,<3.0.0)",
 
-    # ✅ Force CPU-only builds
+    # ✅ Force CPU-only Torch builds
     "torch==2.2.0+cpu",
     "torchvision==0.17.0+cpu",
     "torchaudio==2.2.0+cpu",
@@ -46,7 +46,7 @@ black = "^25.1.0"
 isort = "^6.0.1"
 mypy = "^1.17.1"
 
-# 👇 Tell Poetry about the CPU wheels repo
+# ✅ Add torch-cpu source for Poetry
 [[tool.poetry.source]]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
