@@ -14,6 +14,8 @@ services:
       - TRANSFORMERS_CACHE=/root/.cache/huggingface
       - CHROMA_MODE=persistent
       - CHROMA_PATH=/app/data/chroma
+      - MONGODB_URI=mongodb+srv://abdelmassihabedalmassih:Dia2004&@repcounter.jueeczi.mongodb.net/
+      - MONGODB_DB=docsdb
     depends_on:
       - chroma
     volumes:
