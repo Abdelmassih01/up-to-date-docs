@@ -80,6 +80,18 @@ async def get_page_document_by_id(doc_id: str) -> Optional[PageDocument]:
         return await PageDocument.get(oid)
     except Exception:
         return None
+    
+async def get_page_documents_by_ids(doc_ids: List[str]) -> List[PageDocument]:
+    """Fetch multiple PageDocuments by IDs in a single query."""
+    try:
+        object_ids = [ObjectId(doc_id) for doc_id in doc_ids]
+    except Exception:
+        # If some IDs are invalid, skip them
+        object_ids = []
+    if not object_ids:
+        return []
+
+    return await PageDocument.find(PageDocument.id.in_(object_ids)).to_list()
 
 def render_single_page_html(doc: PageDocument) -> str:
     """Render a single PageDocument to HTML"""

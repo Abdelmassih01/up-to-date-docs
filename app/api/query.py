@@ -3,10 +3,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from fastapi.responses import HTMLResponse
 import os
-import chromadb
 from app.core.vector import init_vector
-
-from app.api.public_pages import get_page_document_by_id, render_combined_pages_html
+from app.api.public_pages import get_page_documents_by_ids, render_combined_pages_html
 
 # Resolve Chroma connection from env (with safe defaults)
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
@@ -96,11 +94,7 @@ async def direct_query_to_html(query: str = Query(..., description="Search query
         return HTMLResponse(content=_render_no_results_html(query), status_code=200)
 
     # Fetch corresponding PageDocuments
-    pages = []
-    for doc_id in doc_ids:
-        doc = await get_page_document_by_id(doc_id)
-        if doc:
-            pages.append(doc)
+    pages = await get_page_documents_by_ids(doc_ids)
 
     if not pages:
         return HTMLResponse(content=_render_no_documents_html(query), status_code=200)
