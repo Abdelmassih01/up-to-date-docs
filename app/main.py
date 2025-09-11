@@ -4,6 +4,7 @@ from app.core.vector import init_vector           # <-- add this
 from app.api.crawl import router as crawl_router
 from app.api.public_pages import router as public_router
 from app.api.query import router as query_router
+from app.api.mcp_server import router as mcp_router   # <-- add this
 from dotenv import load_dotenv
 
 # Load environment variables from .env file into os.environ
@@ -14,6 +15,7 @@ app = FastAPI(title="Docs Crawler API")
 app.include_router(crawl_router, prefix="/crawl", tags=["crawl"])
 app.include_router(public_router)
 app.include_router(query_router, prefix="/query")
+app.include_router(mcp_router, prefix="/tools", tags=["mcp"])  # <-- mount MCP
 
 @app.on_event("startup")
 async def on_startup():
