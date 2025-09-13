@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from app.models.page import PageDocument
 from html import escape
+import html
 from bson import ObjectId
 from datetime import datetime
 from typing import List, Optional
@@ -14,10 +15,9 @@ def _slugify(title: str) -> str:
     ) or "page"
 
 def _clamp_heading_level(level: int | None) -> int:
-    # Use h2..h6 for sections (default h2)
     if not isinstance(level, int):
         return 2
-    return min(6, max(2, level))
+    return min(max(level, 1), 6)
 
 def _render_html(doc: PageDocument, public_url: str) -> str:
     # Build simple static HTML (no JS). All user content is escaped.
@@ -26,26 +26,27 @@ def _render_html(doc: PageDocument, public_url: str) -> str:
     parts.append('<html lang="en">')
     parts.append("<head>")
     parts.append('<meta charset="utf-8">')
-    parts.append(f"<title>{escape(doc.title or 'Document')}</title>")
+    parts.append(f"<title>{html.escape(doc.title or 'Document')}</title>")
     parts.append('<meta name="robots" content="index,follow">')
-    parts.append(f'<link rel="canonical" href="{escape(public_url)}">')
+    parts.append(f'<link rel="canonical" href="{html.escape(public_url)}">')
     parts.append("""<style>
       body{font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;margin:2rem;color:#111;max-width:900px}
       h1{margin:0 0 .25rem 0} .meta{color:#555;margin:0 0 1.25rem 0;font-size:.95rem}
-      pre{padding:.75rem;border:1px solid #ddd;border-radius:6px;overflow:auto;background:#fafafa}
+      pre{padding:.75rem;border:1px solid #ddd;border-radius:6px;overflow:auto;background:#fafafa;white-space:pre-wrap}
       code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
       section{margin:1.25rem 0}
       a{color:#0b5fff;text-decoration:none} a:hover{text-decoration:underline}
     </style>""")
     parts.append("</head><body>")
 
-    parts.append(f"<h1>{escape(doc.title or 'Document')}</h1>")
+    # Title
+    parts.append(f"<h1>{html.escape(doc.title or 'Document')}</h1>")
     last = doc.last_crawled if isinstance(doc.last_crawled, datetime) else None
     last_str = last.isoformat(timespec="seconds") if last else ""
     parts.append('<div class="meta">')
-    parts.append(f'Source: <a href="{escape(doc.url)}" rel="noopener nofollow">{escape(doc.url)}</a><br>')
+    parts.append(f'Source: <a href="{html.escape(doc.url)}" rel="noopener nofollow">{html.escape(doc.url)}</a><br>')
     if last_str:
-        parts.append(f"Last crawled: {escape(last_str)}")
+        parts.append(f"Last crawled: {html.escape(last_str)}")
     parts.append("</div>")
 
     # Sections
@@ -53,21 +54,22 @@ def _render_html(doc: PageDocument, public_url: str) -> str:
         parts.append("<section>")
         if s.heading:
             lvl = _clamp_heading_level(s.heading_level)
-            parts.append(f"<h{lvl}>{escape(s.heading)}</h{lvl}>")
+            parts.append(f"<h{lvl}>{html.escape(s.heading)}</h{lvl}>")
         if s.text:
             # Split paragraphs by double newline for readability
             for para in (s.text.split("\n\n")):
                 if para.strip():
-                    parts.append(f"<p>{escape(para)}</p>")
+                    parts.append(f"<p>{html.escape(para)}</p>")
         for c in (s.codes or []):
-            lang = escape(c.language or "text")
-            code_text = escape(c.code or "")
+            lang = html.escape(c.language or "text")
+            # Escape HTML-sensitive chars but preserve newlines & spacing
+            code_text = html.escape(c.code or "", quote=False)
             parts.append(f'<pre><code class="language-{lang}">{code_text}</code></pre>')
         parts.append("</section>")
 
-    # Optional footer linking back to source
+    # Footer
     parts.append("<hr>")
-    parts.append(f'<p class="meta">Canonical source: <a href="{escape(doc.url)}" rel="noopener nofollow">{escape(doc.url)}</a></p>')
+    parts.append(f'<p class="meta">Canonical source: <a href="{html.escape(doc.url)}" rel="noopener nofollow">{html.escape(doc.url)}</a></p>')
 
     parts.append("</body></html>")
     return "".join(parts)
