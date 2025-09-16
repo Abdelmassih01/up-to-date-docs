@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from fastapi.responses import HTMLResponse
@@ -106,6 +106,47 @@ async def direct_query_to_html(query: str = Query(..., description="Search query
         headers={"Cache-Control": "public, max-age=300"},
     )
 
+@router.get("/instructions.txt")
+async def get_instructions():
+    content = """# Instructions for querying this documentation API
+
+    BASE_URL = "https://abdelmassih.vps.webdock.cloud/query/direct"
+
+    ## How to build a query URL
+
+    1. Always start with the BASE_URL.
+    2. Append "?query=" followed by your search terms.
+    3. Encode spaces as "%20".
+    4. Do NOT include quotation marks in the query.
+    5. Do NOT add extra parameters unless specified below.
+    6. Keep the query terms in plain English (lowercase recommended, but not required).
+    7. Each request must return a full URL that starts with BASE_URL and includes ?query=.
+
+    ## Examples
+
+    Search for MongoDB aggregations:
+        BASE_URL?query=mongodb%20aggregations
+
+    Search for Python aggregation examples:
+        BASE_URL?query=python%20mongodb%20aggregation
+
+    Search for $lookup usage in Python:
+        BASE_URL?query=$lookup%20python
+
+    Search for aggregation memory limit details:
+        BASE_URL?query=aggregation%20memory%20limit
+
+    ## Rules for LLMs
+
+    - If the user provides just keywords (e.g., "python aggregation stages"), 
+    you MUST build the correct URL by inserting those keywords into the query parameter.
+    - Never return only the keywords. Always return the FULL URL.
+    - Ensure proper URL encoding (spaces → %20, special characters like $ kept as-is).
+    - Always prepend the BASE_URL exactly as given above.
+    - Do not assume additional endpoints exist — only use BASE_URL + ?query=.
+
+    """
+    return Response(content=content, media_type="text/plain")
 
 def _render_no_results_html(query: str) -> str:
     return f"""<!doctype html>
